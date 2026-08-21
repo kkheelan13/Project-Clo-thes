@@ -17,12 +17,32 @@ export async function importInto(
   cloud: WardrobeStore,
   local: LocalStore,
 ): Promise<ImportResult> {
-  const garments = await local.list();
+  const { garments, wears } = await local.read();
   let moved = 0;
 
   for (const garment of garments) {
-    const { id: _id, createdAt: _createdAt, ...input } = garment;
-    await cloud.add(input);
+    const {
+      id: _id,
+      createdAt: _createdAt,
+      lastWashedAt,
+      isIroned,
+      ...input
+    } = garment;
+
+    const saved = await cloud.add(input);
+
+    // Carry the history across too, not just the garment: wear dates are what
+    // the age and frequency figures are built from, and re-deriving laundry
+    // state from them keeps a dirty garment dirty through the move.
+    const worn = wears
+      .filter((wear) => wear.garmentId === garment.id)
+      .map((wear) => wear.wornOn);
+    for (const wornOn of worn) {
+      await cloud.logWear([saved.id], wornOn);
+    }
+    if (lastWashedAt) await cloud.wash([saved.id]);
+    if (isIroned) await cloud.setIroned(saved.id, true);
+
     moved += 1;
   }
 

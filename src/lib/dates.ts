@@ -14,3 +14,10 @@ export function formatDate(iso: string): string {
     year: 'numeric',
   });
 }
+
+/** The local calendar date (YYYY-MM-DD) an ISO timestamp falls on. */
+export function localDateOf(isoTimestamp: string): string {
+  const at = new Date(isoTimestamp);
+  const offset = at.getTimezoneOffset() * 60_000;
+  return new Date(at.getTime() - offset).toISOString().slice(0, 10);
+}

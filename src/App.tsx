@@ -1,32 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AddGarment } from './components/AddGarment';
 import { GarmentSheet } from './components/GarmentSheet';
 import { ImportPrompt } from './components/ImportPrompt';
+import { LogWear } from './components/LogWear';
+import { PairOutfit } from './components/PairOutfit';
 import { SignIn } from './components/SignIn';
 import { Wardrobe } from './components/Wardrobe';
 import { useWardrobeStore } from './hooks/useWardrobeStore';
 import { supabase } from './lib/supabase';
-import { byPurchasedOnDesc, type Garment, type NewGarment, type WardrobeStore } from './lib/types';
+import type {
+  NewGarment,
+  WardrobeSnapshot,
+  WardrobeStore,
+} from './lib/types';
 import { SpriteDefs } from './sprites/textures';
 
+const EMPTY: WardrobeSnapshot = { garments: [], wears: [], outfits: [] };
+
 function WardrobeApp({ store, email }: { store: WardrobeStore; email?: string }) {
-  const [garments, setGarments] = useState<Garment[]>([]);
+  const [snapshot, setSnapshot] = useState<WardrobeSnapshot>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
-  const [adding, setAdding] = useState(false);
-  const [selected, setSelected] = useState<Garment>();
   const [reloadToken, setReloadToken] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const [logging, setLogging] = useState(false);
+  const [pairing, setPairing] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>();
 
   // Guarded against a stale response: when `store` swaps from local to cloud on
-  // sign-in, an in-flight list() from the old store must not overwrite the new.
+  // sign-in, an in-flight read from the old store must not overwrite the new.
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
       try {
-        const list = await store.list();
+        const next = await store.read();
         if (!cancelled) {
-          setGarments(list);
+          setSnapshot(next);
           setError(undefined);
         }
       } catch (cause) {
@@ -45,16 +55,25 @@ function WardrobeApp({ store, email }: { store: WardrobeStore; email?: string })
     };
   }, [store, reloadToken]);
 
-  async function add(input: NewGarment) {
-    const saved = await store.add(input);
-    // Insert locally rather than refetching -- the sprite should appear instantly.
-    setGarments((current) => [...current, saved].sort(byPurchasedOnDesc));
-  }
+  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
 
-  async function remove(id: string) {
-    await store.remove(id);
-    setGarments((current) => current.filter((garment) => garment.id !== id));
-  }
+  /**
+   * Every mutation reloads rather than patching local state. Wearing a garment
+   * also unirons it and dissolves its outfit, so three lists move at once --
+   * refetching a few kilobytes is cheaper than keeping them in step by hand.
+   */
+  const act = useCallback(
+    async (work: () => Promise<unknown>) => {
+      await work();
+      reload();
+    },
+    [reload],
+  );
+
+  // Read from the snapshot so the sheet reflects the latest reload rather than
+  // a garment captured when it was opened.
+  const selected = snapshot.garments.find((g) => g.id === selectedId);
+  const count = snapshot.garments.length;
 
   return (
     <>
@@ -62,43 +81,89 @@ function WardrobeApp({ store, email }: { store: WardrobeStore; email?: string })
         <div>
           <h1>Wardrobe</h1>
           <p className="muted small">
-            {loading
-              ? 'Loading…'
-              : `${garments.length} ${garments.length === 1 ? 'item' : 'items'}`}
+            {loading ? 'Loading…' : `${count} ${count === 1 ? 'item' : 'items'}`}
             {store.mode === 'local' && ' · on this device'}
           </p>
         </div>
-        {email && supabase && (
-          <button
-            type="button"
-            className="ghost small"
-            onClick={() => void supabase?.auth.signOut()}
-          >
-            Sign out
-          </button>
-        )}
+        <div className="head-actions">
+          {count > 0 && (
+            <button type="button" className="small" onClick={() => setLogging(true)}>
+              Wore today
+            </button>
+          )}
+          {email && supabase && (
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => void supabase?.auth.signOut()}
+            >
+              Sign out
+            </button>
+          )}
+        </div>
       </header>
 
-      {store.mode === 'cloud' && <ImportPrompt cloud={store} onImported={() => setReloadToken((n) => n + 1)} />}
+      {store.mode === 'cloud' && <ImportPrompt cloud={store} onImported={reload} />}
 
       {error && <p className="error">{error}</p>}
 
       {!loading && (
-        <Wardrobe garments={garments} onSelect={setSelected} onAdd={() => setAdding(true)} />
+        <Wardrobe
+          snapshot={snapshot}
+          onSelect={(garment) => setSelectedId(garment.id)}
+          onAdd={() => setAdding(true)}
+          onPair={() => setPairing(true)}
+          onUnpair={(id) => act(() => store.unpair(id))}
+          onWash={(ids) => act(() => store.wash(ids))}
+        />
       )}
 
-      {garments.length > 0 && (
-        <button type="button" className="fab" aria-label="Add a garment" onClick={() => setAdding(true)}>
+      {count > 0 && (
+        <button
+          type="button"
+          className="fab"
+          aria-label="Add a garment"
+          onClick={() => setAdding(true)}
+        >
           +
         </button>
       )}
 
-      {adding && <AddGarment onSave={add} onClose={() => setAdding(false)} />}
+      {adding && (
+        <AddGarment
+          onSave={async (input: NewGarment) => {
+            await store.add(input);
+            reload();
+          }}
+          onClose={() => setAdding(false)}
+        />
+      )}
+
+      {logging && (
+        <LogWear
+          snapshot={snapshot}
+          onLog={(ids, wornOn) => act(() => store.logWear(ids, wornOn))}
+          onClose={() => setLogging(false)}
+        />
+      )}
+
+      {pairing && (
+        <PairOutfit
+          snapshot={snapshot}
+          onPair={(topId, bottomId) => act(() => store.pair(topId, bottomId))}
+          onClose={() => setPairing(false)}
+        />
+      )}
+
       {selected && (
         <GarmentSheet
           garment={selected}
-          onDelete={remove}
-          onClose={() => setSelected(undefined)}
+          snapshot={snapshot}
+          onDelete={(id: string) => act(() => store.remove(id))}
+          onWear={(id: string, wornOn: string) => act(() => store.logWear([id], wornOn))}
+          onWash={(id: string) => act(() => store.wash([id]))}
+          onIron={(id: string, ironed: boolean) => act(() => store.setIroned(id, ironed))}
+          onClose={() => setSelectedId(undefined)}
         />
       )}
     </>

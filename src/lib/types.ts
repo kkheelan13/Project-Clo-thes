@@ -1,3 +1,5 @@
+import { localDateOf } from './dates';
+
 export const GARMENT_TYPES = [
   'tshirt',
   'shirt',
@@ -88,10 +90,52 @@ export interface Garment {
   sleeve: Sleeve;
   /** ISO date (YYYY-MM-DD) the garment was bought. */
   purchasedOn: string;
+  /** ISO timestamp of the last wash, or undefined if never washed. */
+  lastWashedAt?: string;
+  isIroned: boolean;
   createdAt: string;
 }
 
-export type NewGarment = Omit<Garment, 'id' | 'createdAt'>;
+export type NewGarment = Omit<
+  Garment,
+  'id' | 'createdAt' | 'lastWashedAt' | 'isIroned'
+>;
+
+/** One day a garment was worn. */
+export interface Wear {
+  id: string;
+  garmentId: string;
+  /** The day it was worn (YYYY-MM-DD), which may be backdated. */
+  wornOn: string;
+  /** When the entry was actually made -- breaks same-day ties against a wash. */
+  recordedAt: string;
+}
+
+/** An ironed top and bottom hung together. */
+export interface Outfit {
+  id: string;
+  topId: string;
+  bottomId: string;
+}
+
+/** Types that can be the top half of an outfit. */
+export const TOP_TYPES: ReadonlySet<GarmentType> = new Set<GarmentType>([
+  'tshirt',
+  'shirt',
+  'jacket',
+]);
+
+/** Types that can be the bottom half. */
+export const BOTTOM_TYPES: ReadonlySet<GarmentType> = new Set<GarmentType>([
+  'trousers',
+  'shorts',
+]);
+
+/** Types nobody irons -- they never appear in the ironing or pairing flows. */
+export const UNIRONED_TYPES: ReadonlySet<GarmentType> = new Set<GarmentType>([
+  'socks',
+  'underwear',
+]);
 
 /**
  * The component that decides the sprite's texture. Ties break toward whichever
@@ -132,11 +176,36 @@ export function blendError(materials: MaterialPart[]): string | undefined {
 
 export type StoreMode = 'cloud' | 'local';
 
+/** Everything the app needs in one shot -- the whole wardrobe is a few kB. */
+export interface WardrobeSnapshot {
+  garments: Garment[];
+  wears: Wear[];
+  outfits: Outfit[];
+}
+
 export interface WardrobeStore {
   mode: StoreMode;
-  list(): Promise<Garment[]>;
+  /**
+   * Reads the whole wardrobe at once.
+   *
+   * Mutations below return nothing and callers reload. With kilobytes of data
+   * that is cheaper than reconciling three interdependent lists by hand --
+   * wearing a garment also unirons it and dissolves its outfit, and keeping
+   * that consistent in local state is where the bugs would live.
+   */
+  read(): Promise<WardrobeSnapshot>;
   add(input: NewGarment): Promise<Garment>;
   remove(id: string): Promise<void>;
+
+  /** Logs a day's wear for several garments at once. Same-day repeats no-op. */
+  logWear(garmentIds: string[], wornOn: string): Promise<void>;
+  /** Removes a logged wear, for fixing a mistake. */
+  removeWear(garmentId: string, wornOn: string): Promise<void>;
+  /** Marks garments washed today: clean again, but no longer ironed. */
+  wash(garmentIds: string[]): Promise<void>;
+  setIroned(garmentId: string, ironed: boolean): Promise<void>;
+  pair(topId: string, bottomId: string): Promise<void>;
+  unpair(outfitId: string): Promise<void>;
 }
 
 /** Newest purchase first, then newest entry. */
@@ -145,4 +214,77 @@ export function byPurchasedOnDesc(a: Garment, b: Garment): number {
     b.purchasedOn.localeCompare(a.purchasedOn) ||
     b.createdAt.localeCompare(a.createdAt)
   );
+}
+
+/**
+ * Wear dates for one garment, newest first.
+ *
+ * Callers pass the whole wear log rather than querying per garment: the data is
+ * a few kilobytes, and one pass beats a round trip for each sprite on screen.
+ */
+export function wearsOf(garmentId: string, wears: Wear[]): string[] {
+  return wears
+    .filter((wear) => wear.garmentId === garmentId)
+    .map((wear) => wear.wornOn)
+    .sort((a, b) => b.localeCompare(a));
+}
+
+/**
+ * Whether a garment needs washing. One wear is enough.
+ *
+ * Derived from the wear log rather than stored as a flag, so the two can never
+ * disagree. Comparing dates alone is not sufficient: a wash and a wear on the
+ * same day are ordered by when each was recorded, otherwise washing a shirt in
+ * the morning and wearing it that evening would leave it looking clean. A wear
+ * backdated to before the wash stays clean, since the wash came after it.
+ */
+export function isDirty(garment: Garment, wears: Wear[]): boolean {
+  const mine = wears.filter((wear) => wear.garmentId === garment.id);
+  if (mine.length === 0) return false;
+
+  const washedAt = garment.lastWashedAt;
+  if (!washedAt) return true;
+  const washedOn = localDateOf(washedAt);
+
+  return mine.some(
+    (wear) =>
+      wear.wornOn > washedOn ||
+      (wear.wornOn === washedOn && wear.recordedAt > washedAt),
+  );
+}
+
+/** Whole days since an ISO date, floor 0. */
+export function daysSince(iso: string, from = new Date()): number {
+  const [y, m, d] = iso.split('-').map(Number);
+  const then = new Date(y, m - 1, d);
+  const now = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  return Math.max(0, Math.round((now.getTime() - then.getTime()) / 86_400_000));
+}
+
+/** "3 years old", "8 months old", "new this week". */
+export function describeAge(purchasedOn: string, from = new Date()): string {
+  const days = daysSince(purchasedOn, from);
+  if (days < 7) return 'new this week';
+  if (days < 60) return `${Math.floor(days / 7)} weeks old`;
+  if (days < 730) return `${Math.floor(days / 30)} months old`;
+  return `${Math.floor(days / 365)} years old`;
+}
+
+/**
+ * Average wears per month since purchase.
+ *
+ * Reported over the time you have actually owned it, so a jacket bought last
+ * week isn't flattered by a short window -- anything owned under a month is
+ * measured against a full month rather than its true age.
+ */
+export function wearsPerMonth(garment: Garment, wears: Wear[]): number {
+  const count = wearsOf(garment.id, wears).length;
+  if (count === 0) return 0;
+  const months = Math.max(1, daysSince(garment.purchasedOn) / 30);
+  return Math.round((count / months) * 10) / 10;
+}
+
+/** The outfit a garment currently hangs in, if any. */
+export function outfitOf(garmentId: string, outfits: Outfit[]) {
+  return outfits.find((o) => o.topId === garmentId || o.bottomId === garmentId);
 }

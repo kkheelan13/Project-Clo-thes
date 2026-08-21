@@ -23,10 +23,14 @@ same wardrobe on your phone and your laptop.
 
 1. Create a project at [supabase.com](https://supabase.com) (the free tier is
    plenty — this app stores kilobytes).
-2. In **SQL Editor → New query**, paste and run
-   [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql). It
-   creates the `garments` table, the row-level security policies, and a
-   constraint that keeps every material blend totalling 100%.
+2. In **SQL Editor → New query**, run the migrations **in order**:
+   [`0001_init.sql`](supabase/migrations/0001_init.sql) creates the `garments`
+   table, row-level security, and a constraint keeping every material blend at
+   100%; [`0002_wear_laundry_rail.sql`](supabase/migrations/0002_wear_laundry_rail.sql)
+   adds wear logging, laundry, and the hanging rail.
+
+   ⚠️ Run `0002` **before** deploying v0.2. The app reads columns it creates, so
+   a deploy that lands first will error on load.
 3. In **Authentication → Sign In / Providers**, make sure **Email** is enabled.
    No password is used — sign-in is a magic link.
 4. In **Project Settings → Data API** copy the project URL, and from **API Keys**
@@ -56,6 +60,18 @@ Then, so magic links work away from your own machine:
 
 On your phone, open the deployed URL and use **Add to Home Screen**.
 
+## How a garment moves through the week
+
+Wear it, and it fades on the shelf and joins the laundry count — one wear is
+enough. Wearing also creases it, so it stops being ironed and comes off the
+rail if it was hanging. Wash it and it is clean again but still creased. Iron
+it, and it can be paired with an ironed top or bottom and hung together.
+
+Cleanliness is derived from the wear log rather than stored as a flag, so the
+two can never disagree. Wears and washes are ordered by a single monotonic
+client clock: comparing calendar dates alone would call a shirt clean if you
+washed it in the morning and wore it that evening.
+
 ## How the sprites work
 
 - `src/sprites/shapes.ts` — each garment type as rectangles on a 16×16 grid.
@@ -79,7 +95,6 @@ On your phone, open the deployed URL and use **Add to Home Screen**.
 
 ## Where this is going
 
-This is phase one. Planned next, in order: logging what you wear each day (which
-gives you each garment's age and how often you actually reach for it), then
-laundry — worn garments fade and collect in a basket — then a hanging rail where
-ironed shirt-and-trouser pairs hang together.
+v0.1 built the wardrobe; v0.2 added wear logging, laundry, and the rail. Ideas
+from here: a least-worn view to surface what you never reach for, retiring
+garments without losing their history, and packing lists built from outfits.

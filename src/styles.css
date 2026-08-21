@@ -11,6 +11,7 @@
   --accent-ink: #fffffe;
   --danger: #a32d2d;
   --danger-ink: #fffffe;
+  --bg-laundry: #f3e7e4;
   --radius: 10px;
 
   color-scheme: light dark;
@@ -33,6 +34,7 @@
     --accent-ink: #17171a;
     --danger: #f09595;
     --danger-ink: #17171a;
+    --bg-laundry: #2e2523;
   }
 }
 
@@ -138,7 +140,7 @@ button.small { min-height: 36px; padding: 0.35rem 0.75rem; font-size: 0.85rem; }
   margin-bottom: 0.5rem;
 }
 
-.shelf-label span {
+.shelf-label > span:first-of-type {
   color: var(--ink-faint);
   font-weight: 400;
   margin-left: 0.3rem;
@@ -344,4 +346,101 @@ select {
  * between the rectangles that make it up.
  */
 .sprite { filter: drop-shadow(0 0 1px var(--sprite-edge)); }
-.sprite.faded { filter: drop-shadow(0 0 1px var(--sprite-edge)) saturate(0.3) opacity(0.45); }
+.sprite.faded { filter: drop-shadow(0 0 1px var(--sprite-edge)) saturate(0.4) opacity(0.6); }
+
+/* --- phase 2-4: logging, laundry, the rail --- */
+
+.head-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+.grow { flex: 1; }
+
+button.link {
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: 0;
+  text-decoration: underline;
+  padding: 0 0 0 0.6rem;
+  min-height: 0;
+  margin-left: auto;
+}
+
+button.link:hover { color: var(--ink); }
+
+.shelf-label { display: flex; align-items: center; gap: 0.5rem; }
+.shelf-label .small { font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+.rail-section { padding: 0.85rem 0.9rem 1rem; background: var(--shelf); }
+.rail-section + .shelf { border-top: 1px solid var(--line); }
+
+.rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  border-top: 2px solid var(--line-strong);
+  padding-top: 0;
+}
+
+.hanger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* The wire the outfit hangs from, joining it to the rail above. */
+.hook { width: 1px; height: 10px; background: var(--line-strong); }
+
+.hanger .garment { padding: 0; }
+.hanger .garment + .garment { margin-top: -10px; }
+.hanger .link { margin: 0.35rem 0 0; padding: 0; }
+
+.laundry .shelf-items { background: var(--bg-laundry); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.actions button { flex: 1; min-width: 9rem; }
+
+.pick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: var(--shelf);
+  border-radius: var(--radius);
+  padding: 6px;
+}
+
+.pick {
+  position: relative;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 2px;
+  min-height: 0;
+  line-height: 0;
+}
+
+.pick.on { border-color: var(--ink); background: var(--panel); }
+
+.pick-tick {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.laundry-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.9rem;
+  border-top: 1px solid var(--line);
+  background: var(--bg-laundry);
+}
+
+.laundry-bar p { flex: 1; min-width: 12rem; }
+.shelf-note { padding: 0.35rem 0.25rem; }
