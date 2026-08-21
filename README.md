@@ -121,6 +121,9 @@ A plain garment remains around 230 bytes.
 
 ## Where this is going
 
-v0.1 built the wardrobe; v0.2 added wear logging, laundry, and the rail. Ideas
-from here: a least-worn view to surface what you never reach for, retiring
-garments without losing their history, and packing lists built from outfits.
+v1.0 is the wardrobe end to end: sprites and prints, wear logging, laundry, the
+hanging rail, and cloud sync across devices.
+
+Ideas from here: a least-worn view to surface what you never reach for, retiring
+garments without losing their history, cost-per-wear from a purchase price, and
+packing lists built from outfits.
