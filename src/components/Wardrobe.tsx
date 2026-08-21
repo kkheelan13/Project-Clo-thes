@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   BOTTOM_TYPES,
   GARMENT_TYPES,
@@ -11,6 +11,7 @@ import {
   type WardrobeSnapshot,
 } from '../lib/types';
 import { GarmentSprite } from '../sprites/Garment';
+import { MaterialTip, type TipAnchor } from './MaterialTip';
 
 interface Props {
   snapshot: WardrobeSnapshot;
@@ -30,6 +31,51 @@ interface Props {
  */
 export function Wardrobe({ snapshot, onSelect, onAdd, onPair, onUnpair, onWash }: Props) {
   const [busy, setBusy] = useState(false);
+  const [tip, setTip] = useState<TipAnchor>();
+  const pressTimer = useRef<number>(undefined);
+  // Where the finger went down, so jitter can be told from a scroll.
+  const pressOrigin = useRef({ x: 0, y: 0 });
+  // Set when a long press opens the tip, so releasing does not also count as a
+  // tap and open the garment's sheet.
+  const longPressed = useRef(false);
+
+  useEffect(() => {
+    if (!tip) return;
+    const hide = () => setTip(undefined);
+    // A tip anchored to a rect goes stale the moment anything moves.
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    return () => {
+      window.removeEventListener('scroll', hide, true);
+      window.removeEventListener('resize', hide);
+    };
+  }, [tip]);
+
+  function showTip(element: HTMLElement, materials: Props['snapshot']['garments'][number]['materials']) {
+    const rect = element.getBoundingClientRect();
+    setTip({
+      materials,
+      x: rect.left + rect.width / 2,
+      top: rect.top,
+      bottom: rect.bottom,
+    });
+  }
+
+  function cancelPress() {
+    window.clearTimeout(pressTimer.current);
+  }
+
+  /**
+   * Cancels a long press only once the finger has actually travelled.
+   *
+   * Cancelling on any movement at all meant a real finger never held still
+   * enough to trigger it -- touch emulation jitters by a pixel or two and the
+   * press was killed before the timer ever ran. Ten pixels still lets a genuine
+   * scroll cancel immediately.
+   */
+  function pressMoved(x: number, y: number) {
+    return Math.hypot(x - pressOrigin.current.x, y - pressOrigin.current.y) > 10;
+  }
   const { garments, wears, outfits } = snapshot;
 
   if (garments.length === 0) {
@@ -79,7 +125,41 @@ export function Wardrobe({ snapshot, onSelect, onAdd, onPair, onUnpair, onWash }
       aria-label={`${TYPE_LABELS_SINGULAR[garment.type]}, ${describeBlend(
         garment.materials,
       )}${isDirty(garment, wears) ? ', needs washing' : ''}`}
-      onClick={() => onSelect(garment)}
+      onPointerEnter={(event) => {
+        if (event.pointerType === 'mouse') showTip(event.currentTarget, garment.materials);
+      }}
+      onPointerLeave={() => {
+        cancelPress();
+        setTip(undefined);
+      }}
+      onPointerDown={(event) => {
+        if (event.pointerType === 'mouse') return;
+        const element = event.currentTarget;
+        longPressed.current = false;
+        pressOrigin.current = { x: event.clientX, y: event.clientY };
+        pressTimer.current = window.setTimeout(() => {
+          longPressed.current = true;
+          showTip(element, garment.materials);
+        }, 450);
+      }}
+      onPointerUp={cancelPress}
+      onPointerCancel={() => {
+        cancelPress();
+        setTip(undefined);
+      }}
+      onPointerMove={(event) => {
+        if (pressMoved(event.clientX, event.clientY)) cancelPress();
+      }}
+      // Otherwise a long press raises the platform's own text callout on top.
+      onContextMenu={(event) => event.preventDefault()}
+      onClick={() => {
+        if (longPressed.current) {
+          longPressed.current = false;
+          setTip(undefined);
+          return;
+        }
+        onSelect(garment);
+      }}
     >
       <GarmentSprite garment={garment} size={size} faded={isDirty(garment, wears)} />
     </button>
@@ -96,6 +176,7 @@ export function Wardrobe({ snapshot, onSelect, onAdd, onPair, onUnpair, onWash }
 
   return (
     <div className="cabinet">
+      {tip && <MaterialTip anchor={tip} />}
       {(outfits.length > 0 || canPair) && (
         <section className="rail-section">
           <h2 className="shelf-label">

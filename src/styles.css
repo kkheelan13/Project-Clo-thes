@@ -486,3 +486,41 @@ button.link:hover { color: var(--ink); }
 input[type='range'] { width: 100%; }
 
 button.wide { width: 100%; }
+
+/* --- material split tip --- */
+
+.material-tip {
+  position: fixed;
+  z-index: 40;
+  /* Centred on the garment; the offset and any edge clamping are measured in
+     the component, since the tip is as wide as its text. */
+  transform: translate(-50%, -100%);
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.55rem;
+  min-width: 6.5rem;
+  max-width: 14rem;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.22);
+}
+
+.material-bar {
+  display: flex;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+}
+
+.material-bar span { background: currentColor; }
+
+.material-tip p {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.4rem;
+}
+
+.material-tip strong { font-weight: 600; }
