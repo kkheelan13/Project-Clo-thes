@@ -41,7 +41,6 @@ export function AddGarment({ onSave, onClose }: Props) {
   // Held only while this sheet is open, so the print can be re-cropped without
   // asking for the photo again. It is dropped the moment the sheet closes.
   const [photo, setPhoto] = useState<File>();
-  const [cropping, setCropping] = useState(false);
   const [materials, setMaterials] = useState<MaterialPart[]>(DEFAULT_BLEND);
   const [purchasedOn, setPurchasedOn] = useState(today);
   const [reading, setReading] = useState(false);
@@ -78,7 +77,6 @@ export function AddGarment({ onSave, onClose }: Props) {
 
   async function useCrop(crop: Crop, placement: Placement) {
     if (!photo) return;
-    setCropping(false);
     setReading(true);
     setError(undefined);
     try {
@@ -138,8 +136,9 @@ export function AddGarment({ onSave, onClose }: Props) {
             <div>
               <p className="preview-title">{TYPE_LABELS_SINGULAR[type]}</p>
               <p className="muted small">
-                This is how it will sit on the shelf. Nothing but these settings
-                is saved &mdash; your photo is read for its colour and discarded.
+                This is how it will sit on the shelf. Your photo is read for its
+                colour and its print, then discarded &mdash; nothing but these
+                settings is saved.
               </p>
             </div>
           </div>
@@ -206,44 +205,30 @@ export function AddGarment({ onSave, onClose }: Props) {
             )}
           </label>
 
-          {photo && !cropping && (
+          {photo && (
             <label className="field">
-              <span>Print</span>
-              <div className="actions">
-                <button
-                  type="button"
-                  className="ghost"
-                  disabled={reading}
-                  onClick={() => setCropping(true)}
-                >
-                  {pattern ? 'Re-crop the print' : 'It has a print or pattern'}
-                </button>
-                {pattern && (
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => setPattern(undefined)}
-                  >
-                    Remove print
-                  </button>
-                )}
-              </div>
-              <p className="muted small">
-                {pattern
-                  ? `${pattern.palette.length} colours, ${
-                      pattern.placement === 'chest' ? 'on the chest' : 'all over'
-                    }.`
-                  : 'Stripes, checks, or something printed on the front.'}
-              </p>
+              <span>Print or pattern</span>
+              {pattern ? (
+                <>
+                  <p className="muted small">
+                    {pattern.palette.length} colours,{' '}
+                    {pattern.placement === 'chest' ? 'on the chest' : 'all over'}.
+                    The preview above shows how it will look.
+                  </p>
+                  <div className="actions">
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => setPattern(undefined)}
+                    >
+                      Choose a different area
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <CropPattern file={photo} busy={reading} onUse={useCrop} />
+              )}
             </label>
-          )}
-
-          {photo && cropping && (
-            <CropPattern
-              file={photo}
-              onCancel={() => setCropping(false)}
-              onUse={useCrop}
-            />
           )}
 
           {hasSleeves && (

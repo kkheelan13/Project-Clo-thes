@@ -447,19 +447,34 @@ button.link:hover { color: var(--ink); }
 
 /* --- pattern cropping --- */
 
-.crop { margin-bottom: 1.15rem; }
+.crop { margin-bottom: 1.15rem; text-align: center; }
+.crop .field, .crop > p { text-align: left; }
 
+/*
+ * The frame shrinks to the image rather than the image filling the frame.
+ * The crop box is positioned as a percentage of the frame and read back the
+ * same way, so any letterboxing between the two would offset every crop.
+ */
 .crop-frame {
   position: relative;
+  display: inline-block;
+  /* An explicit width, not a shrink-to-fit one. Sizing the frame from the
+     image while the image sizes itself from the frame is circular, and the
+     preview collapsed to zero height. */
+  width: min(100%, 260px);
   border-radius: var(--radius);
-  overflow: hidden;
   background: var(--shelf);
   touch-action: none;
   cursor: crosshair;
   line-height: 0;
 }
 
-.crop-frame img { width: 100%; display: block; user-select: none; }
+.crop-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
 
 .crop-box {
   position: absolute;
@@ -469,3 +484,5 @@ button.link:hover { color: var(--ink); }
 }
 
 input[type='range'] { width: 100%; }
+
+button.wide { width: 100%; }

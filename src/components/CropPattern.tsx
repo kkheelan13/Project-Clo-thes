@@ -3,7 +3,7 @@ import type { Crop, Placement } from '../lib/pattern';
 
 interface Props {
   file: File;
-  onCancel(): void;
+  busy?: boolean;
   onUse(crop: Crop, placement: Placement): void;
 }
 
@@ -15,35 +15,56 @@ interface Props {
  * sidesteps auto-segmentation, which is unreliable on a crumpled shirt against
  * a duvet -- and when it fails you get a sprite made of bedsheet.
  */
-export function CropPattern({ file, onCancel, onUse }: Props) {
-  // Created once during render rather than in an effect, so the image has a
-  // source on the very first paint instead of flashing empty.
-  const [url] = useState(() => URL.createObjectURL(file));
+export function CropPattern({ file, busy, onUse }: Props) {
+  const [url, setUrl] = useState<string>();
   const [size, setSize] = useState(0.6);
   const [centre, setCentre] = useState({ x: 0.5, y: 0.5 });
+  // The photo's shape, so the crop can be a true square. Without it a 0.6
+  // fraction of a portrait photo is 0.6 of the width by 0.6 of the height --
+  // a rectangle, which the square pattern grid then squashes.
+  const [shape, setShape] = useState({ w: 1, h: 1 });
   const [placement, setPlacement] = useState<Placement>('allover');
   const frame = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
-  // The preview holds the only reference to the decoded photo; revoking it lets
-  // the browser drop those pixels as soon as this step is done with.
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  /*
+   * The URL must be created inside the effect, not once during render.
+   *
+   * StrictMode mounts, cleans up, and mounts again. A URL created in a lazy
+   * useState initialiser is not recreated on that second mount, so the cleanup
+   * revokes it and the <img> is left pointing at a dead blob -- it reports
+   * complete with naturalWidth 0 and renders nothing at all.
+   *
+   * The preview holds the only reference to the decoded photo, so revoking on
+   * the way out lets the browser drop those pixels immediately.
+   */
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  // A square whose side is `size` of the photo's shorter edge, expressed in
+  // each axis as a fraction of that axis.
+  const shorter = Math.min(shape.w, shape.h);
+  const span = { w: (size * shorter) / shape.w, h: (size * shorter) / shape.h };
 
   function moveTo(clientX: number, clientY: number) {
     const box = frame.current?.getBoundingClientRect();
     if (!box) return;
-    const half = size / 2;
+    const halfW = span.w / 2;
+    const halfH = span.h / 2;
     setCentre({
-      x: Math.min(1 - half, Math.max(half, (clientX - box.left) / box.width)),
-      y: Math.min(1 - half, Math.max(half, (clientY - box.top) / box.height)),
+      x: Math.min(1 - halfW, Math.max(halfW, (clientX - box.left) / box.width)),
+      y: Math.min(1 - halfH, Math.max(halfH, (clientY - box.top) / box.height)),
     });
   }
 
   const crop: Crop = {
-    x: centre.x - size / 2,
-    y: centre.y - size / 2,
-    w: size,
-    h: size,
+    x: centre.x - span.w / 2,
+    y: centre.y - span.h / 2,
+    w: span.w,
+    h: span.h,
   };
 
   return (
@@ -63,7 +84,19 @@ export function CropPattern({ file, onCancel, onUse }: Props) {
           dragging.current = false;
         }}
       >
-        <img src={url} alt="" draggable={false} />
+        {url && (
+          <img
+            src={url}
+            alt=""
+            draggable={false}
+            onLoad={(event) =>
+              setShape({
+                w: event.currentTarget.naturalWidth,
+                h: event.currentTarget.naturalHeight,
+              })
+            }
+          />
+        )}
         <div
           className="crop-box"
           style={{
@@ -76,7 +109,8 @@ export function CropPattern({ file, onCancel, onUse }: Props) {
       </div>
 
       <p className="muted small">
-        Drag over the part of the garment you want on the miniature.
+        Drag the square over a patterned part of the garment. Skip this if it is
+        a plain colour.
       </p>
 
       <label className="field">
@@ -90,11 +124,12 @@ export function CropPattern({ file, onCancel, onUse }: Props) {
           onChange={(event) => {
             const next = Number(event.target.value) / 100;
             setSize(next);
-            // Keep the box on screen when it grows past the current centre.
-            const half = next / 2;
+            // Keep the box on the photo when it grows past the current centre.
+            const halfW = (next * shorter) / shape.w / 2;
+            const halfH = (next * shorter) / shape.h / 2;
             setCentre((c) => ({
-              x: Math.min(1 - half, Math.max(half, c.x)),
-              y: Math.min(1 - half, Math.max(half, c.y)),
+              x: Math.min(1 - halfW, Math.max(halfW, c.x)),
+              y: Math.min(1 - halfH, Math.max(halfH, c.y)),
             }));
           }}
         />
@@ -125,14 +160,14 @@ export function CropPattern({ file, onCancel, onUse }: Props) {
         </p>
       </label>
 
-      <div className="actions">
-        <button type="button" className="ghost" onClick={onCancel}>
-          Back
-        </button>
-        <button type="button" onClick={() => onUse(crop, placement)}>
-          Use this print
-        </button>
-      </div>
+      <button
+        type="button"
+        className="wide"
+        disabled={busy}
+        onClick={() => onUse(crop, placement)}
+      >
+        {busy ? 'Reading the print…' : 'Use this as the print'}
+      </button>
     </div>
   );
 }
