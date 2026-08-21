@@ -35,6 +35,12 @@ same wardrobe on your phone and your laptop.
    No password is used — sign-in is a magic link.
 4. In **Project Settings → Data API** copy the project URL, and from **API Keys**
    copy the `anon` key.
+
+   ⚠️ The project URL is the bare host — `https://<project-ref>.supabase.co`
+   with no path. That page also shows the REST endpoint ending in `/rest/v1`
+   right beside it; pasting that one makes sign-in fail with "Invalid path
+   specified in request URL". The app strips it if you do, but Vercel's copy
+   needs to be right too.
 5. `cp .env.example .env` and paste both values in. Restart `npm run dev`.
 
 Both values are safe to ship in a browser bundle — the anon key is designed to be
