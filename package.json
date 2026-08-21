@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "sql": "cat supabase/migrations/*.sql"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

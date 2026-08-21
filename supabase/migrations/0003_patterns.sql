@@ -26,6 +26,7 @@ alter table public.garments
       and (pattern->>'placement') in ('allover', 'chest')
       and (pattern->>'grid')::int between 8 and 64
       -- One character per cell, so the grid and the payload cannot disagree.
-      and length(pattern->>'cells') = ((pattern->>'grid')::int) ^ 2
+      and length(pattern->>'cells')
+            = ((pattern->>'grid')::int * (pattern->>'grid')::int)
     )
   );
