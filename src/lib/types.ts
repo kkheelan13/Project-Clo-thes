@@ -1,4 +1,5 @@
 import { localDateOf } from './dates';
+import type { Pattern } from './pattern';
 
 export const GARMENT_TYPES = [
   'tshirt',
@@ -85,6 +86,8 @@ export interface Garment {
   type: GarmentType;
   /** Hex colour sampled from the garment, e.g. `#378ADD`. */
   colour: string;
+  /** A print sampled from the photo. Absent for a plain garment. */
+  pattern?: Pattern;
   /** Full fabric breakdown. Percentages total 100. */
   materials: MaterialPart[];
   sleeve: Sleeve;

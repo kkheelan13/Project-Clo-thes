@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { stamp } from '../clock';
+import type { Pattern } from '../pattern';
 import {
   byPurchasedOnDesc,
   type Garment,
@@ -12,7 +13,7 @@ import {
 } from '../types';
 
 const GARMENT_COLUMNS =
-  'id, type, colour, materials, sleeve, purchased_on, last_washed_at, is_ironed, created_at';
+  'id, type, colour, materials, sleeve, pattern, purchased_on, last_washed_at, is_ironed, created_at';
 
 interface GarmentRow {
   id: string;
@@ -20,6 +21,7 @@ interface GarmentRow {
   colour: string;
   materials: MaterialPart[];
   sleeve: Sleeve;
+  pattern: Pattern | null;
   purchased_on: string;
   last_washed_at: string | null;
   is_ironed: boolean;
@@ -46,6 +48,7 @@ function toGarment(row: GarmentRow): Garment {
     colour: row.colour,
     materials: row.materials,
     sleeve: row.sleeve,
+    pattern: row.pattern ?? undefined,
     purchasedOn: row.purchased_on,
     lastWashedAt: row.last_washed_at ?? undefined,
     isIroned: row.is_ironed,
@@ -104,6 +107,7 @@ export class CloudStore implements WardrobeStore {
         colour: input.colour,
         materials: input.materials,
         sleeve: input.sleeve,
+        pattern: input.pattern ?? null,
         purchased_on: input.purchasedOn,
       })
       .select(GARMENT_COLUMNS)

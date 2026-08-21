@@ -1,5 +1,12 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { ColourError, extractColours } from '../lib/colour';
+import {
+  PatternError,
+  extractPattern,
+  type Crop,
+  type Pattern,
+  type Placement,
+} from '../lib/pattern';
 import { today } from '../lib/dates';
 import {
   GARMENT_TYPES,
@@ -15,6 +22,7 @@ import {
 } from '../lib/types';
 import { GarmentSprite } from '../sprites/Garment';
 import { BlendEditor } from './BlendEditor';
+import { CropPattern } from './CropPattern';
 
 const DEFAULT_COLOUR = '#7F77DD';
 const DEFAULT_BLEND: MaterialPart[] = [{ material: 'cotton', percent: 100 }];
@@ -29,6 +37,11 @@ export function AddGarment({ onSave, onClose }: Props) {
   const [sleeve, setSleeve] = useState<Sleeve>('half');
   const [colour, setColour] = useState(DEFAULT_COLOUR);
   const [swatches, setSwatches] = useState<string[]>([]);
+  const [pattern, setPattern] = useState<Pattern>();
+  // Held only while this sheet is open, so the print can be re-cropped without
+  // asking for the photo again. It is dropped the moment the sheet closes.
+  const [photo, setPhoto] = useState<File>();
+  const [cropping, setCropping] = useState(false);
   const [materials, setMaterials] = useState<MaterialPart[]>(DEFAULT_BLEND);
   const [purchasedOn, setPurchasedOn] = useState(today);
   const [reading, setReading] = useState(false);
@@ -51,6 +64,7 @@ export function AddGarment({ onSave, onClose }: Props) {
       const found = await extractColours(file);
       setSwatches(found);
       if (found[0]) setColour(found[0]);
+      setPhoto(file);
     } catch (cause) {
       setError(
         cause instanceof ColourError
@@ -60,7 +74,22 @@ export function AddGarment({ onSave, onClose }: Props) {
     } finally {
       setReading(false);
     }
-    // `file` falls out of scope here. The photo is never stored or uploaded.
+  }
+
+  async function useCrop(crop: Crop, placement: Placement) {
+    if (!photo) return;
+    setCropping(false);
+    setReading(true);
+    setError(undefined);
+    try {
+      setPattern(await extractPattern(photo, crop, placement));
+    } catch (cause) {
+      setError(
+        cause instanceof PatternError ? cause.message : "That print couldn't be read.",
+      );
+    } finally {
+      setReading(false);
+    }
   }
 
   async function save() {
@@ -71,6 +100,7 @@ export function AddGarment({ onSave, onClose }: Props) {
       await onSave({
         type,
         colour,
+        pattern,
         materials,
         sleeve: hasSleeves ? sleeve : 'none',
         purchasedOn,
@@ -95,7 +125,13 @@ export function AddGarment({ onSave, onClose }: Props) {
         <div className="sheet-body">
           <div className="preview-strip">
             <GarmentSprite
-              garment={{ type, colour, materials, sleeve: hasSleeves ? sleeve : 'none' }}
+              garment={{
+                type,
+                colour,
+                pattern,
+                materials,
+                sleeve: hasSleeves ? sleeve : 'none',
+              }}
               size={92}
               title="Preview"
             />
@@ -170,6 +206,46 @@ export function AddGarment({ onSave, onClose }: Props) {
             )}
           </label>
 
+          {photo && !cropping && (
+            <label className="field">
+              <span>Print</span>
+              <div className="actions">
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={reading}
+                  onClick={() => setCropping(true)}
+                >
+                  {pattern ? 'Re-crop the print' : 'It has a print or pattern'}
+                </button>
+                {pattern && (
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => setPattern(undefined)}
+                  >
+                    Remove print
+                  </button>
+                )}
+              </div>
+              <p className="muted small">
+                {pattern
+                  ? `${pattern.palette.length} colours, ${
+                      pattern.placement === 'chest' ? 'on the chest' : 'all over'
+                    }.`
+                  : 'Stripes, checks, or something printed on the front.'}
+              </p>
+            </label>
+          )}
+
+          {photo && cropping && (
+            <CropPattern
+              file={photo}
+              onCancel={() => setCropping(false)}
+              onUse={useCrop}
+            />
+          )}
+
           {hasSleeves && (
             <label className="field">
               <span>Sleeves</span>
@@ -192,7 +268,9 @@ export function AddGarment({ onSave, onClose }: Props) {
             <span>Material</span>
             <BlendEditor value={materials} onChange={setMaterials} />
             <p className="muted small">
-              The largest share sets the texture on the shelf.
+              {pattern
+                ? 'Recorded for reference. The print sets how it looks, not the weave.'
+                : 'The largest share sets the texture on the shelf.'}
             </p>
           </label>
 

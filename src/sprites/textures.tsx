@@ -15,38 +15,38 @@ export function SpriteDefs() {
   return (
     <svg width="0" height="0" aria-hidden="true" style={{ position: 'absolute' }}>
       <defs>
-        <pattern id="tex-linen" patternUnits="userSpaceOnUse" width="2" height="2">
-          <rect width="2" height="1" fill={LIGHT} />
+        <pattern id="tex-linen" patternUnits="userSpaceOnUse" width="4" height="4">
+          <rect width="4" height="2" fill={LIGHT} />
         </pattern>
 
-        <pattern id="tex-denim" patternUnits="userSpaceOnUse" width="2" height="2">
-          <path d="M0 2L2 0" stroke={DARK} strokeWidth=".7" />
+        <pattern id="tex-denim" patternUnits="userSpaceOnUse" width="4" height="4">
+          <path d="M0 4L4 0" stroke={DARK} strokeWidth="1.4" />
         </pattern>
 
-        <pattern id="tex-wool" patternUnits="userSpaceOnUse" width="2" height="2">
-          <circle cx=".5" cy=".5" r=".22" fill="rgba(255,255,255,.26)" />
-          <circle cx="1.5" cy="1.5" r=".18" fill="rgba(0,0,0,.2)" />
+        <pattern id="tex-wool" patternUnits="userSpaceOnUse" width="4" height="4">
+          <circle cx="1" cy="1" r="0.44" fill="rgba(255,255,255,.26)" />
+          <circle cx="3" cy="3" r="0.36" fill="rgba(0,0,0,.2)" />
         </pattern>
 
-        <pattern id="tex-polyester" patternUnits="userSpaceOnUse" width="2" height="2">
-          <path d="M0 2L2 0" stroke={LIGHT} strokeWidth=".35" />
+        <pattern id="tex-polyester" patternUnits="userSpaceOnUse" width="4" height="4">
+          <path d="M0 4L4 0" stroke={LIGHT} strokeWidth="0.7" />
         </pattern>
 
-        <pattern id="tex-viscose" patternUnits="userSpaceOnUse" width="2" height="2">
-          <rect width="2" height=".45" fill={LIGHT} />
+        <pattern id="tex-viscose" patternUnits="userSpaceOnUse" width="4" height="4">
+          <rect width="4" height="0.9" fill={LIGHT} />
         </pattern>
 
-        <pattern id="tex-silk" patternUnits="userSpaceOnUse" width="3" height="3">
-          <rect width="3" height="1.2" fill="rgba(255,255,255,.2)" />
+        <pattern id="tex-silk" patternUnits="userSpaceOnUse" width="6" height="6">
+          <rect width="6" height="2.4" fill="rgba(255,255,255,.2)" />
         </pattern>
 
-        <pattern id="tex-nylon" patternUnits="userSpaceOnUse" width="2" height="2">
-          <rect width=".55" height="2" fill={LIGHT} />
+        <pattern id="tex-nylon" patternUnits="userSpaceOnUse" width="4" height="4">
+          <rect width="1.1" height="4" fill={LIGHT} />
         </pattern>
 
-        <pattern id="tex-elastane" patternUnits="userSpaceOnUse" width="2" height="2">
-          <rect width="1" height="1" fill={LIGHT} />
-          <rect x="1" y="1" width="1" height="1" fill={DARK} />
+        <pattern id="tex-elastane" patternUnits="userSpaceOnUse" width="4" height="4">
+          <rect width="2" height="2" fill={LIGHT} />
+          <rect x="2" y="2" width="2" height="2" fill={DARK} />
         </pattern>
       </defs>
     </svg>

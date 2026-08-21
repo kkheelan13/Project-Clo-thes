@@ -72,6 +72,26 @@ two can never disagree. Wears and washes are ordered by a single monotonic
 client clock: comparing calendar dates alone would call a shirt clean if you
 washed it in the morning and wore it that evening.
 
+## Prints and patterns
+
+A garment is not always one colour. Photograph a striped shirt or a printed tee,
+drag a box over the part you want, and the crop is quantised to a handful of
+colours at sprite resolution and painted cell by cell.
+
+It is quantised at six times the sprite grid and then reduced by majority vote
+per cell, not by averaging. Averaging blends every stripe boundary, which turned
+a navy-and-cream shirt into a six-step grey ramp; voting is how indexed pixel
+art is downscaled and it keeps the edges crisp.
+
+The photo's lighting is divided out first, using a deliberately coarse 4×4
+luminance field. Without it the sprite wears the room's shadows and a plain navy
+tee comes back as four different navies. The field stays coarse on purpose — at
+8×8 it starts modelling the garment's own pattern instead of the light.
+
+**This still stores no images.** What is kept is a palette of a few colours plus
+one index per cell: about 1.1 kB, from which no photograph can be reconstructed.
+A plain garment remains around 230 bytes.
+
 ## How the sprites work
 
 - `src/sprites/shapes.ts` — each garment type as rectangles on a 16×16 grid.

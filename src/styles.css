@@ -444,3 +444,28 @@ button.link:hover { color: var(--ink); }
 
 .laundry-bar p { flex: 1; min-width: 12rem; }
 .shelf-note { padding: 0.35rem 0.25rem; }
+
+/* --- pattern cropping --- */
+
+.crop { margin-bottom: 1.15rem; }
+
+.crop-frame {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--shelf);
+  touch-action: none;
+  cursor: crosshair;
+  line-height: 0;
+}
+
+.crop-frame img { width: 100%; display: block; user-select: none; }
+
+.crop-box {
+  position: absolute;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+}
+
+input[type='range'] { width: 100%; }

@@ -1,7 +1,16 @@
 import type { GarmentType, Sleeve } from '../lib/types';
 
-/** Sprites are drawn on a 16x16 grid, Minecraft-style. */
-export const GRID = 16;
+/**
+ * Silhouettes are authored on a 16x16 grid and rendered on a 32x32 one.
+ *
+ * Printed garments are painted cell by cell from the photo, and 16 cells across
+ * is too coarse for that -- stripes alias into uneven bands and a shirt ends up
+ * looking like a different shirt. Authoring stays on 16 so no coordinate had to
+ * be rewritten; scaling happens once, on the way out.
+ */
+const DESIGN_GRID = 16;
+export const GRID = 32;
+const SCALE = GRID / DESIGN_GRID;
 
 export interface Rect {
   x: number;
@@ -72,6 +81,18 @@ function sleeves(
  * shape, so a half-sleeve and full-sleeve shirt stay the same garment.
  */
 export function shapeFor(type: GarmentType, sleeve: Sleeve): Shape {
+  const shape = design(type, sleeve);
+  const scale = (r: Rect): Rect => ({
+    x: r.x * SCALE,
+    y: r.y * SCALE,
+    w: r.w * SCALE,
+    h: r.h * SCALE,
+  });
+  return { base: shape.base.map(scale), detail: shape.detail.map(scale) };
+}
+
+/** Silhouettes in design units. */
+function design(type: GarmentType, sleeve: Sleeve): Shape {
   switch (type) {
     case 'tshirt': {
       const arms = sleeves(sleeve, 3, 1, 12, 4, 12);
